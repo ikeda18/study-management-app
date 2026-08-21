@@ -732,7 +732,7 @@ function switchMode(m){
 
 /* ---------- スプレッドシート同期（GAS Webアプリ） ---------- */
 // ↓ 減酒アプリで使っている GAS のデプロイURL（/exec）をそのまま貼る
-const API='';
+const API='https://script.google.com/macros/s/AKfycbzDTMc6QptmQE20Nb2oH8ZxBuSAe2r_chn9_0sO-rG-vLFGxiIcWEj-HBSHT-wnVrZ8UA/exec';
 const canSync=()=>!!API;
 function apiPost(payload){
   if(!canSync())return Promise.resolve();
