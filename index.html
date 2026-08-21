@@ -5,78 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="勉強記録">
+<meta name="apple-mobile-web-app-title" content="習慣トラッカー">
 <meta name="theme-color" content="#9BE7FA">
-<title>勉強記録</title>
+<title>習慣トラッカー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
-  :root{
-    --bg:#F1FAFD;        /* 爽やかな空色の背景 */
-    --card:#FFFFFF;
-    --ink:#17566B;       /* 深いティール（文字） */
-    --muted:#6E97A6;
-    --line:#E1F0F5;
-    --y-light:#DDF4FB;   /* 淡い水色（チップ地） */
-    --y:#FFE485;         /* 差し色：薄い黄色（ボタン） */
-    --y-dark:#1C6E86;    /* 濃いティール（今日枠・1位） */
-    --y-ink:#1C6E86;     /* 白地で読める青（数字強調） */
+  html{
+    /* 勉強：もとの空色テーマ */
+    --bg:#F1FAFD; --card:#FFFFFF; --ink:#17566B; --muted:#6E97A6; --line:#E1F0F5;
+    --y-light:#DDF4FB; --y:#FFE485; --y-on:#17566B; --y-dark:#1C6E86; --y-ink:#1C6E86; --on-ink:#FFFFFF;
+    --line-col:#2090BC;
     --shadow:0 1px 2px rgba(20,55,85,.06),0 6px 18px rgba(20,55,85,.06);
     --l0:#EDF0F3; --l1:#C8EEF7; --l2:#9BE7FA; --l3:#2090BC;
   }
+  html.mode-omiai{
+    /* omiai：#1E5989 ネイビー / #D698A6 ダスティピンク / #FBE2E2 ペールピンク */
+    --bg:#FBE2E2; --ink:#1E5989; --muted:#93A9BD; --line:#F0DDDF;
+    --y-light:#F7E7EA; --y:#D698A6; --y-on:#FFFFFF; --y-dark:#1E5989; --y-ink:#1E5989; --on-ink:#FFFFFF;
+    --line-col:#D698A6;
+    --shadow:0 1px 2px rgba(30,89,137,.07),0 8px 24px rgba(30,89,137,.06);
+    --l0:#F3E9EB; --l1:#F1D3D8; --l2:#D698A6; --l3:#1E5989;
+  }
+  html.mode-axis{
+    /* 軸：#FDF2B4 ペールイエロー / #FFCB9C アプリコット / #F8E16B イエロー */
+    --bg:#FDF2B4; --ink:#6B5326; --muted:#B39A62; --line:#F2E4B2;
+    --y-light:#FDF7DA; --y:#F8E16B; --y-on:#6B5326; --y-dark:#FFCB9C; --y-ink:#C5883F;
+    --on-ink:#6B5326; --line-col:#F8E16B;
+    --shadow:0 1px 2px rgba(150,120,40,.08),0 8px 24px rgba(150,120,40,.07);
+    --l0:#F6EFD6; --l1:#FDF2B4; --l2:#F8E16B; --l3:#FFCB9C;
+  }
   html,body{background:var(--bg);color:var(--ink);
     font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
-    -webkit-font-smoothing:antialiased}
+    -webkit-font-smoothing:antialiased;transition:background .18s}
+  html{min-height:100%}
   body{max-width:520px;margin:0 auto;padding:18px 16px 60px;
     padding-bottom:calc(60px + env(safe-area-inset-bottom))}
-  .head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 2px 16px}
-  .head h1{font-size:22px;font-weight:800;letter-spacing:.02em}
-  .head .date{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-  .card{background:var(--card);border:1px solid #E4F1F6;border-radius:20px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+  .head{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 16px;gap:8px}
+  .head h1{font-size:20px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+  .tabs{display:flex;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;box-shadow:var(--shadow)}
+  .tabbtn{border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:700;
+    padding:8px 10px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:3px;white-space:nowrap}
+  .tabbtn.active{background:var(--y-dark);color:var(--on-ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
   .lbl{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;margin-bottom:10px}
+  .guide{font-size:13px;line-height:1.9}
+  .guide b{color:var(--y-ink)}
 
-  /* 今日の合計 */
   .today{display:flex;align-items:flex-end;gap:8px;margin-bottom:14px}
   .today .num{font-size:44px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:var(--y-ink)}
   .today .unit{font-size:15px;color:var(--muted);font-weight:700;padding-bottom:5px}
-  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-  .chip{border:none;background:var(--y-light);color:var(--y-ink);font-weight:800;font-size:15px;
-    padding:13px 0;border-radius:14px;cursor:pointer;transition:transform .06s}
-  .chip:active{transform:scale(.94)}
   .manual{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .manual input{width:64px;text-align:center;font-size:16px;font-weight:700;color:var(--ink);
     border:1.5px solid var(--line);border-radius:12px;padding:10px 6px;background:#fff}
   .manual .sep{color:var(--muted);font-weight:700}
   .btn{border:none;border-radius:14px;font-weight:800;cursor:pointer;transition:transform .06s,opacity .2s}
   .btn:active{transform:scale(.96)}
-  .btn-add{background:var(--y);color:var(--ink);padding:11px 16px;font-size:15px}
-  .btn-ghost{background:#fff;color:var(--muted);border:1.5px solid var(--line);padding:11px 14px;font-size:14px}
+  .btn-add{background:var(--y);color:var(--y-on);padding:11px 16px;font-size:15px}
   .undo{margin-left:auto;background:none;border:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline}
   textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:12px;font-size:15px;
     font-family:inherit;resize:none;color:var(--ink);margin-top:12px;background:#fff}
   textarea::placeholder{color:#A9C2CE}
 
-  /* サマリー */
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .stat{text-align:center}
   .stat .v{font-size:24px;font-weight:800;color:var(--y-ink);font-variant-numeric:tabular-nums}
   .stat .k{font-size:11px;color:var(--muted);font-weight:700;margin-top:3px}
 
-  /* 本ランキング */
   .book{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
   .book:last-of-type{border-bottom:none}
-  .rank{width:26px;height:26px;flex:0 0 26px;border-radius:8px;display:grid;place-items:center;
-    font-weight:800;font-size:14px;color:#17566B}
-  .rank.r1{background:var(--y-dark);color:#fff} .rank.r2{background:var(--y)}
+  .rank{width:26px;height:26px;flex:0 0 26px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:14px;color:#17566B}
+  .rank.r1{background:var(--y-dark);color:#fff} .rank.r2{background:var(--y);color:var(--y-on)}
   .rank.r3{background:var(--y-light)} .rank.rx{background:#fff;border:1.5px solid var(--line);color:var(--muted)}
   .book .info{flex:1;min-width:0}
   .book .t{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .book .a{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .book .ops{display:flex;align-items:center;gap:4px}
-  .icnbtn{border:none;background:#E7F4F8;color:var(--muted);width:30px;height:30px;border-radius:9px;
+  .icnbtn{border:none;background:var(--y-light);color:var(--muted);width:30px;height:30px;border-radius:9px;
     font-size:15px;font-weight:800;cursor:pointer;display:grid;place-items:center}
   .icnbtn:active{transform:scale(.9)}
-  .done{border:none;background:var(--y);color:var(--ink);font-weight:800;font-size:13px;
-    padding:7px 11px;border-radius:11px;cursor:pointer;white-space:nowrap}
+  .done{border:none;background:var(--y);color:var(--y-on);font-weight:800;font-size:13px;padding:7px 11px;border-radius:11px;cursor:pointer;white-space:nowrap}
   .done:active{transform:scale(.94)}
   .addbook{display:flex;gap:8px;margin-top:14px}
   .addbook input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;background:#fff;color:var(--ink)}
@@ -95,30 +102,89 @@
   .memoitem .md{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:2px}
   .memoitem .mt{font-size:14px}
 
-  /* 日付ナビ */
   .datenav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .navbtn{border:none;background:var(--y-light);color:var(--y-ink);width:40px;height:34px;border-radius:11px;font-size:14px;font-weight:800;cursor:pointer}
   .navbtn:active{transform:scale(.92)} .navbtn:disabled{opacity:.3;cursor:default}
   .navlabel{font-size:16px;font-weight:800;color:var(--ink)}
-  /* ヒートマップ */
+
   .wdhead{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
   .wdhead span{text-align:center;font-size:11px;color:var(--muted);font-weight:700}
   .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  #cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;grid-auto-rows:44px}
-  .cday{position:relative;width:100%;height:100%;border-radius:8px;background:var(--l0);border:2px solid #E3E8ED;display:flex;align-items:flex-start;justify-content:flex-end;padding:3px 5px;cursor:pointer;transition:transform .06s}
-  .cday span{font-size:11px;color:#2B6072;font-weight:700}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;grid-auto-rows:44px}
+  .cday{position:relative;width:100%;height:100%;border-radius:8px;background:var(--l0);border:2px solid var(--l0);display:flex;align-items:flex-start;justify-content:flex-end;padding:3px 5px;cursor:pointer;transition:transform .06s}
+  .cday span{font-size:11px;color:var(--ink);font-weight:700}
   .cday.l1{background:var(--l1)} .cday.l2{background:var(--l2)} .cday.l3{background:var(--l3)}
-  .cday.l2 span{color:#1E5266} .cday.l3 span{color:#fff}
-  .cday.blank{background:transparent;cursor:default}
+  .cday.l3 span{color:#fff}
+  .cday.blank{background:transparent;border-color:transparent;cursor:default}
   .cday.fut{opacity:.4;cursor:default} .cday.fut span{color:#A9C2CE}
   .cday:not(.blank):active{transform:scale(.93)}
   .cday.sel{border-color:var(--y-ink)}
-  .cday.today{border-color:#E3E8ED}
-  .cday.today::after{content:'';position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:#1C6E86}
+  .cday.today::after{content:'';position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:var(--y-ink)}
   .legend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:12px;font-size:11px;color:var(--muted)}
   .lg{width:14px;height:14px;border-radius:4px;display:inline-block}
   .lg.l0{background:var(--l0)} .lg.l1{background:var(--l1)} .lg.l2{background:var(--l2)} .lg.l3{background:var(--l3)}
-  /* トースト */
+
+  /* お見合い：カウンター行 */
+  .counter{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--line)}
+  .counter .cl{font-size:15px;color:var(--ink);font-weight:700}
+  .counter .cl small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
+  .cbtns{display:flex;align-items:center;gap:10px}
+  .cval{font-weight:800;font-size:20px;color:var(--y-ink);width:34px;text-align:center;font-variant-numeric:tabular-nums}
+  .cbtn{border:none;background:var(--y-light);color:var(--y-ink);width:36px;height:36px;border-radius:999px;font-weight:800;font-size:17px;cursor:pointer;display:grid;place-items:center}
+  .cbtn:active{transform:scale(.9)}
+  .cbtn.big{background:var(--y);color:var(--y-on)}
+
+  /* 足あと折れ線グラフ */
+  .charthead{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+  .charthead .ct{font-size:15px;font-weight:800;color:var(--ink)}
+  .charthead .ct small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:3px}
+  .charthead .cnums{text-align:right;display:flex;gap:14px}
+  .charthead .cnums .n{font-size:20px;font-weight:800;color:var(--y-ink);font-variant-numeric:tabular-nums;line-height:1.1}
+  .charthead .cnums .k{font-size:10px;color:var(--muted);font-weight:700;margin-top:2px}
+  .chartwrap{position:relative;height:230px;margin-top:8px}
+
+  /* お見合い：入力ヒーロー */
+  .hero{background:var(--y-light);border-radius:16px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .hero .hl{font-size:14px;font-weight:800;color:var(--y-ink)}
+  .hero .hv{flex:1;text-align:center;font-size:40px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;cursor:pointer;line-height:1}
+  .hero .hv small{font-size:15px;font-weight:700;color:var(--muted);margin-left:3px}
+  .hstep{width:44px;height:44px;border:none;border-radius:13px;background:#fff;font-size:24px;font-weight:600;
+    color:var(--y-ink);box-shadow:0 1px 2px rgba(0,0,0,.08);cursor:pointer;line-height:0;flex:0 0 44px}
+  .hstep:active{transform:scale(.93)}
+  .herolbl{font-size:13px;color:var(--muted);font-weight:700;margin:16px 2px 8px}
+  .herolbl:first-child{margin-top:0}
+
+  /* 課金額 */
+  .paytop{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+  .paytop .amt{font-size:32px;font-weight:800;color:var(--y-ink);font-variant-numeric:tabular-nums;line-height:1}
+  .payrow{display:flex;gap:8px;align-items:center}
+  .payrow input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:var(--ink);font-weight:700}
+  .payitem{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .payitem:last-child{border-bottom:none}
+  .payitem .pl{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .payitem .pv{font-weight:800;font-variant-numeric:tabular-nums}
+  .payitem .pr{display:flex;align-items:center;gap:8px}
+
+  .secnote{font-size:11px;color:var(--muted);font-weight:400;margin:-6px 2px 10px;line-height:1.6}
+  .arow{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .arow:last-child{border-bottom:none}
+  .arow .abox{width:20px;height:20px;margin-top:1px;border-radius:6px;border:2px solid var(--line);flex:0 0 20px;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer}
+  .arow .abox.on{background:var(--y-dark);border-color:var(--y-dark);color:var(--on-ink)}
+  .arow .atxt{flex:1;min-width:0;cursor:pointer}
+  .arow .at{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.5}
+  .arow .at.off{color:var(--muted);font-weight:600}
+  .arow .as{font-size:12px;color:var(--muted);line-height:1.6;margin-top:3px}
+  .arow .adel{border:none;background:none;color:var(--muted);font-size:17px;cursor:pointer;padding:0 2px;line-height:1;opacity:.6}
+  .addrow{width:100%;border:none;border-radius:12px;background:var(--y-light);color:var(--y-ink);
+    font-size:13px;font-weight:800;padding:11px;margin-top:12px;cursor:pointer}
+  .addrow:active{transform:scale(.98)}
+  .checkrow{display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer}
+  .checkbox{width:20px;height:20px;border-radius:6px;border:2px solid var(--line);flex:0 0 20px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:800}
+  .checkbox.on{background:var(--y-dark);border-color:var(--y-dark);color:var(--on-ink)}
+  .checktext{font-size:14px;color:var(--ink)}
+  .checktext.off{color:var(--muted)}
+
   #toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%) translateY(20px);
     background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:14px;font-weight:700;
     opacity:0;pointer-events:none;transition:.25s;z-index:99}
@@ -127,251 +193,392 @@
 </head>
 <body>
   <div class="head">
-    <h1>勉強記録</h1>
-    <div class="date" id="todayDate"></div>
-  </div>
-
-  <!-- 記録入力 -->
-  <div class="card">
-    <div class="datenav">
-      <button class="navbtn" onclick="stepDay(-1)">◀</button>
-      <div class="navlabel" id="selLabel">今日</div>
-      <button class="navbtn" id="nextBtn" onclick="stepDay(1)">▶</button>
-    </div>
-    <div class="today"><span class="num" id="todayNum">0</span><span class="unit" id="todayUnit">分</span></div>
-    <div class="manual">
-      <input id="mh" type="number" inputmode="numeric" min="0" placeholder="0"><span class="sep">時間</span>
-      <input id="mm" type="number" inputmode="numeric" min="0" placeholder="0"><span class="sep">分</span>
-      <button class="btn btn-add" onclick="addManual()">加える</button>
-      <button class="undo" id="undoBtn" onclick="undo()" style="display:none">直前を取消</button>
-    </div>
-    <textarea id="memo" rows="2" placeholder="メモ（任意）例：集中できた／数学2章まで" oninput="saveMemo()"></textarea>
-  </div>
-
-  <!-- カレンダー -->
-  <div class="card">
-    <div class="calnav">
-      <button class="navbtn" onclick="calStep(-1)">◀</button>
-      <div class="navlabel" id="calLabel">2026年8月</div>
-      <button class="navbtn" id="calNext" onclick="calStep(1)">▶</button>
-    </div>
-    <div class="wdhead"><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div>
-    <div id="cal"></div>
-    <div class="legend"><span>少</span><i class="lg l0"></i><i class="lg l1"></i><i class="lg l2"></i><i class="lg l3"></i><span>多</span></div>
-  </div>
-
-  <!-- サマリー -->
-  <div class="card">
-    <div class="lbl">これまで</div>
-    <div class="stats">
-      <div class="stat"><div class="v" id="sTotal">0</div><div class="k">累計</div></div>
-      <div class="stat"><div class="v" id="sWeek">0</div><div class="k">今週（月〜）</div></div>
-      <div class="stat"><div class="v" id="sStreak">0</div><div class="k">連続日数</div></div>
+    <h1 id="pageTitle">勉強記録</h1>
+    <div class="tabs">
+      <button class="tabbtn" data-mode="study" onclick="switchMode('study')">勉強</button>
+      <button class="tabbtn" data-mode="omiai" onclick="switchMode('omiai')">omiai</button>
+      <button class="tabbtn" data-mode="axis" onclick="switchMode('axis')">軸</button>
     </div>
   </div>
 
-  <!-- 読書ランキング -->
-  <div class="card">
-    <div class="lbl">読書ランキング</div>
-    <div id="bookList"></div>
-    <div class="addbook">
-      <input id="bTitle" placeholder="本のタイトル">
-      <button class="btn btn-add" onclick="addBook()">追加</button>
+  <!-- ============ 勉強 ============ -->
+  <div id="panel-study" class="panel">
+    <div class="card">
+      <div class="datenav">
+        <button class="navbtn" onclick="stepDay('study',-1)">◀</button>
+        <div class="navlabel" id="study_selLabel">今日</div>
+        <button class="navbtn" id="study_nextBtn" onclick="stepDay('study',1)">▶</button>
+      </div>
+      <div class="today"><span class="num" id="study_todayNum">0</span><span class="unit" id="study_todayUnit">分</span></div>
+      <div class="manual">
+        <input id="study_mh" type="number" inputmode="numeric" min="0" placeholder="0"><span class="sep">時間</span>
+        <input id="study_mm" type="number" inputmode="numeric" min="0" placeholder="0"><span class="sep">分</span>
+        <button class="btn btn-add" onclick="addManual('study')">加える</button>
+        <button class="undo" id="study_undoBtn" onclick="undo('study')" style="display:none">直前を取消</button>
+      </div>
+      <textarea id="study_memo" rows="2" placeholder="メモ（任意）例：集中できた／数学2章まで" oninput="saveMemo('study')"></textarea>
     </div>
-    <div style="margin-top:16px">
-      <div class="foldhead" id="histHead" onclick="toggleFold('hist')">
-        <div class="lbl" style="margin:0">読了履歴 <span id="histCount" style="color:var(--y-ink)"></span></div>
+
+    <div class="card">
+      <div class="calnav">
+        <button class="navbtn" onclick="calStep('study',-1)">◀</button>
+        <div class="navlabel" id="study_calLabel"></div>
+        <button class="navbtn" id="study_calNext" onclick="calStep('study',1)">▶</button>
+      </div>
+      <div class="wdhead"><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div>
+      <div id="study_cal" class="cal"></div>
+      <div class="legend"><span>少</span><i class="lg l0"></i><i class="lg l1"></i><i class="lg l2"></i><i class="lg l3"></i><span>多</span></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">これまで</div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="study_sTotal">0</div><div class="k">総勉強時間</div></div>
+        <div class="stat"><div class="v" id="study_sWeek">0</div><div class="k">今週の勉強時間</div></div>
+        <div class="stat"><div class="v" id="study_sStreak">0</div><div class="k">総連続日数</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">読書ランキング</div>
+      <div id="bookList"></div>
+      <div class="addbook">
+        <input id="bTitle" placeholder="本のタイトル">
+        <button class="btn btn-add" onclick="addBook()">追加</button>
+      </div>
+      <div style="margin-top:16px">
+        <div class="foldhead" id="histHead" onclick="toggleFold('hist')">
+          <div class="lbl" style="margin:0">読了履歴 <span id="histCount" style="color:var(--y-ink)"></span></div>
+          <span class="car">▾</span>
+        </div>
+        <div class="foldbody" id="histBody"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="foldhead" id="memoHead" onclick="toggleFold('memo')">
+        <div class="lbl" style="margin:0">メモ履歴</div>
         <span class="car">▾</span>
       </div>
-      <div class="foldbody" id="histBody"></div>
+      <div class="foldbody" id="memoBody"></div>
     </div>
   </div>
 
-  <!-- メモ履歴 -->
-  <div class="card">
-    <div class="foldhead" id="memoHead" onclick="toggleFold('memo')">
-      <div class="lbl" style="margin:0">メモ履歴</div>
-      <span class="car">▾</span>
+  <!-- ============ お見合い ============ -->
+  <div id="panel-omiai" class="panel" style="display:none">
+
+    <div class="card">
+      <div class="datenav">
+        <button class="navbtn" onclick="stepDay('omiai',-1)">◀</button>
+        <div class="navlabel" id="omiai_selLabel">今日</div>
+        <button class="navbtn" id="omiai_nextBtn" onclick="stepDay('omiai',1)">▶</button>
+      </div>
+
+      <div class="herolbl">足あと</div>
+      <div class="hero">
+        <button class="hstep" onclick="kpi('steps',-1)">−</button>
+        <div class="hv" onclick="editKpi('steps')"><span id="omiai_stepsVal">0</span><small>件</small></div>
+        <button class="hstep" onclick="kpi('steps',1)">＋</button>
+      </div>
+
+      <div class="herolbl">受け取ったいいね</div>
+      <div class="hero">
+        <button class="hstep" onclick="kpi('likes',-1)">−</button>
+        <div class="hv" onclick="editKpi('likes')"><span id="omiai_likesVal">0</span><small>件</small></div>
+        <button class="hstep" onclick="kpi('likes',1)">＋</button>
+      </div>
+
+      <textarea id="omiai_memo" rows="2" placeholder="今日どのくらい触ったか（例：45min）、アクションの振り返りなど" oninput="saveMemo('omiai')"></textarea>
     </div>
-    <div class="foldbody" id="memoBody"></div>
+
+    <!-- 足あと推移 -->
+    <div class="card">
+      <div class="charthead">
+        <div class="ct">足あとの推移<small>直近30日</small></div>
+        <div class="cnums">
+          <div><div class="n" id="omiai_tLikes">0</div><div class="k">総いいね数</div></div>
+        </div>
+      </div>
+      <div class="chartwrap"><canvas id="omiai_chart"></canvas></div>
+    </div>
+
+    <!-- 課金額 -->
+    <div class="card">
+      <div class="paytop">
+        <div>
+          <div class="lbl" style="margin-bottom:6px">総課金額</div>
+          <div class="amt" id="pay_total">¥0</div>
+        </div>
+      </div>
+      <div class="payrow">
+        <input id="pay_input" type="number" inputmode="numeric" min="0" placeholder="金額（円）">
+        <button class="btn btn-add" onclick="addPay()">＋ 追加</button>
+      </div>
+      <div style="margin-top:14px">
+        <div class="foldhead" id="payHead" onclick="toggleFold('pay')">
+          <div class="lbl" style="margin:0">課金履歴 <span id="payCount" style="color:var(--y-ink)"></span></div>
+          <span class="car">▾</span>
+        </div>
+        <div class="foldbody" id="payBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 軸 ============ -->
+  <div id="panel-axis" class="panel" style="display:none">
+    <div class="card">
+      <div class="lbl">① 譲れない条件</div>
+      <div class="secnote">※年収や共通の趣味、家事などは不問</div>
+      <div id="axis_must"></div>
+      <button class="addrow" onclick="addAxis('must')">＋ 項目を追加</button>
+    </div>
+    <div class="card">
+      <div class="lbl">② あると嬉しい</div>
+      <div id="axis_nice"></div>
+      <button class="addrow" onclick="addAxis('nice')">＋ 項目を追加</button>
+    </div>
+    <div class="card">
+      <div class="lbl">③ 確認しておきたい点</div>
+      <div class="secnote">※上から優先度高</div>
+      <div id="axis_check"></div>
+      <button class="addrow" onclick="addAxis('check')">＋ 項目を追加</button>
+    </div>
+    <div class="card">
+      <div class="lbl">④ 一緒にいたいイメージ</div>
+      <textarea id="axis_image" rows="3" placeholder="どんな関係・暮らしを一緒に作りたいか、自分の言葉で" oninput="saveAxisText('image',this.value)"></textarea>
+    </div>
   </div>
 
   <div id="toast"></div>
 
 <script>
-/* ---------- 保存層：localStorageキャッシュ（使えない環境はメモリ保持） ---------- */
-const KEY='study_tracker_v1';
-let db={entries:{},books:[],history:[]};
+const KEY='habit_tracker_v4';
+let db={
+  study:{entries:{},books:[],history:[]},
+  omiai:{entries:{},payments:[]},
+  axis:{
+    must:[
+      {t:"女性として惹かれる",s:"見た目・雰囲気・愛想を含めて「いいな」と思える",on:false},
+      {t:"場の空気や相手の状態を見られる",s:"空気を読まず自分のペースだけで話し続けない",on:false},
+      {t:"味方でいてくれる",s:"優しい、思いやりがある、つらい時に寄り添ってくれる",on:false},
+      {t:"働く意欲があり、社会に馴染める",s:"",on:false},
+      {t:"借金がない",s:"",on:false},
+      {t:"子どもを持つことに前向き",s:"※1〜3人が理想",on:false}
+    ],
+    nice:[
+      {t:"お互いの一人時間・趣味を大切にできる",s:"",on:false},
+      {t:"外のイライラを家庭に持ち込みすぎない",s:"",on:false},
+      {t:"貯金10万円以上",s:"※金額より「貯めようとする意思」があるか",on:false},
+      {t:"家族と関係が良い",s:"",on:false}
+    ],
+    check:[
+      {t:"結婚の希望の時期",s:"",on:false},
+      {t:"住む地域への希望",s:"自分は関東か、京都",on:false},
+      {t:"貯金計画",s:"趣味に散財しすぎないか",on:false},
+      {t:"家事の分担",s:"",on:false},
+      {t:"持ち家／賃貸",s:"",on:false}
+    ],
+    image:"お互いが味方で、思いやりを持ちながら、それぞれの時間も大切にできる家庭。",
+    v:2
+  }
+};
 function load(){
-  try{const raw=localStorage.getItem(KEY);if(raw)db=Object.assign(db,JSON.parse(raw));}
-  catch(e){/* サンドボックス等ではメモリ保持 */}
+  try{
+    let raw=localStorage.getItem(KEY)||localStorage.getItem('habit_tracker_v3')||localStorage.getItem('habit_tracker_v2')||localStorage.getItem('habit_tracker_v1');
+    if(!raw){
+      const old=localStorage.getItem('study_tracker_v1');
+      if(old){const o=JSON.parse(old);db.study.entries=o.entries||{};db.study.books=o.books||[];db.study.history=o.history||[];}
+      return;
+    }
+    const p=JSON.parse(raw);
+    if(p.study)db.study=Object.assign(db.study,p.study);
+    if(p.omiai)db.omiai=Object.assign(db.omiai,p.omiai);
+    if(p.axis&&p.axis.v===2)db.axis=Object.assign(db.axis,p.axis); // 旧バージョンの軸は新しい雛形で置き換え
+    if(!db.omiai.payments)db.omiai.payments=[];
+    for(const k in db.omiai.entries){const e=db.omiai.entries[k];
+      if(e.likes===undefined&&e.recv!==undefined)e.likes=e.recv;
+      if(e.steps===undefined)e.steps=0;}
+  }catch(e){}
 }
-function persist(){
-  try{localStorage.setItem(KEY,JSON.stringify(db));}
-  catch(e){/* 保存不可でもUIは動く */}
-}
-let lastAdd=null; // {date, delta} 直前取消用
-let selDate=new Date(); selDate.setHours(0,0,0,0);
-function selKey(){return ymd(selDate);}
-let calRef=new Date(); calRef.setDate(1); calRef.setHours(0,0,0,0);
-function syncCal(){calRef=new Date(selDate.getFullYear(),selDate.getMonth(),1);}
+function persist(){ try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){} }
 
-/* ---------- ユーティリティ ---------- */
+let mode='study';
+let selDate={study:new Date(),omiai:new Date()};
+let calRef=new Date();
+let lastAdd={study:null,omiai:null};
+selDate.study.setHours(0,0,0,0); selDate.omiai.setHours(0,0,0,0);
+calRef.setDate(1); calRef.setHours(0,0,0,0);
+
 const pad=n=>String(n).padStart(2,'0');
 function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 const todayKey=()=>ymd(new Date());
 function mondayOf(d){const x=new Date(d);const off=(x.getDay()+6)%7;x.setDate(x.getDate()-off);x.setHours(0,0,0,0);return x;}
 function fmtHM(min){const h=Math.floor(min/60),m=min%60;
   if(h&&m)return h+'時間'+m+'分'; if(h)return h+'時間'; return m+'分';}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function yen(n){return '¥'+Number(n).toLocaleString('ja-JP');}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1400);}
 
-/* ---------- 記録 ---------- */
-function ensureDay(k){if(!db.entries[k])db.entries[k]={min:0,memo:''};return db.entries[k];}
-function add(delta){
-  const k=selKey();const e=ensureDay(k);
+function selKey(m){return ymd(selDate[m]);}
+function ensureDay(m,k){
+  const blank = m==='omiai' ? {min:0,steps:0,likes:0,memo:''} : {min:0,memo:''};
+  if(!db[m].entries[k])db[m].entries[k]=blank; return db[m].entries[k];
+}
+function add(m,delta){
+  const k=selKey(m);const e=ensureDay(m,k);
   e.min=Math.max(0,e.min+delta);
-  lastAdd={date:k,delta};document.getElementById('undoBtn').style.display=delta>0?'inline':'none';
-  persist();renderEntry();renderCal();renderSummary();
+  lastAdd[m]={date:k,delta};document.getElementById(m+'_undoBtn').style.display=delta>0?'inline':'none';
+  persist();renderEntry(m);
+  if(m==='study'){renderCal();renderSummary();pushStudy(k);} else {renderChart();pushOmiai(k);}
   const tag=(k===todayKey())?'今日':k.slice(5).replace('-','/');
   toast('+'+delta+'分  '+tag+' 合計 '+fmtHM(e.min));
 }
-function addManual(){
-  const h=parseInt(document.getElementById('mh').value||0,10);
-  const m=parseInt(document.getElementById('mm').value||0,10);
-  const total=(isNaN(h)?0:h)*60+(isNaN(m)?0:m);
+function addManual(m){
+  const h=parseInt(document.getElementById(m+'_mh').value||0,10);
+  const mm=parseInt(document.getElementById(m+'_mm').value||0,10);
+  const total=(isNaN(h)?0:h)*60+(isNaN(mm)?0:mm);
   if(total<=0){toast('時間を入力してね');return;}
-  document.getElementById('mh').value='';document.getElementById('mm').value='';
-  add(total);
+  document.getElementById(m+'_mh').value='';document.getElementById(m+'_mm').value='';
+  add(m,total);
 }
-function undo(){
-  if(!lastAdd)return;
-  const e=db.entries[lastAdd.date];if(e){e.min=Math.max(0,e.min-lastAdd.delta);}
-  document.getElementById('undoBtn').style.display='none';
-  const d=lastAdd.delta;lastAdd=null;
-  persist();renderEntry();renderCal();renderSummary();
+function undo(m){
+  if(!lastAdd[m])return;
+  const e=db[m].entries[lastAdd[m].date];if(e){e.min=Math.max(0,e.min-lastAdd[m].delta);}
+  document.getElementById(m+'_undoBtn').style.display='none';
+  const d=lastAdd[m].delta,lastKey=lastAdd[m].date;lastAdd[m]=null;
+  persist();renderEntry(m);
+  if(m==='study'){renderCal();renderSummary();pushStudy(lastKey);} else {renderChart();pushOmiai(lastKey);}
   toast('取消しました（-'+d+'分）');
 }
-function saveMemo(){
-  const k=selKey();const e=ensureDay(k);
-  e.memo=document.getElementById('memo').value;
-  persist();renderMemoList();
+function saveMemo(m){
+  const k=selKey(m);const e=ensureDay(m,k);
+  e.memo=document.getElementById(m+'_memo').value;
+  persist();
+  if(m==='study'){renderMemoList();pushStudy(k);} else pushOmiai(k);
 }
-
-/* ---------- 本ランキング ---------- */
-function addBook(){
-  const t=document.getElementById('bTitle').value.trim();
-  if(!t){toast('タイトルを入力してね');return;}
-  db.books.push({id:Date.now(),title:t});
-  document.getElementById('bTitle').value='';
-  persist();renderBooks();toast('追加しました');
+function renderEntry(m){
+  const k=selKey(m);const e=db[m].entries[k];
+  if(m==='study'){
+    const min=e?e.min:0;const h=Math.floor(min/60),mm=min%60;
+    document.getElementById('study_todayNum').textContent = min>=60 ? h : min;
+    document.getElementById('study_todayUnit').textContent = min>=60 ? ('時間'+(mm?mm+'分':'')) : '分';
+  }
+  document.getElementById(m+'_memo').value = e&&e.memo?e.memo:'';
+  const wd=['日','月','火','水','木','金','土'][selDate[m].getDay()];
+  document.getElementById(m+'_selLabel').textContent=(k===todayKey()?'今日 ':'')+(selDate[m].getMonth()+1)+'/'+selDate[m].getDate()+'('+wd+')';
+  document.getElementById(m+'_nextBtn').disabled=(k===todayKey());
+  if(m==='omiai'){
+    const v = e || {steps:0,likes:0};
+    document.getElementById('omiai_stepsVal').textContent=v.steps||0;
+    document.getElementById('omiai_likesVal').textContent=v.likes||0;
+  }
 }
-function moveBook(i,dir){
-  const j=i+dir;if(j<0||j>=db.books.length)return;
-  [db.books[i],db.books[j]]=[db.books[j],db.books[i]];
-  persist();renderBooks();
-}
-function finishBook(i){
-  const b=db.books.splice(i,1)[0];
-  db.history.unshift({title:b.title,done:todayKey()});
-  persist();renderBooks();renderHistory();
-  toast('読了！繰り上げました 🎉');
-}
-function delHistory(i){db.history.splice(i,1);persist();renderHistory();}
-
-/* ---------- 折りたたみ ---------- */
-function toggleFold(kind){
-  const head=document.getElementById(kind+'Head');
-  const body=document.getElementById(kind+'Body');
-  head.classList.toggle('open');body.classList.toggle('open');
-}
-
-/* ---------- 描画 ---------- */
-function renderEntry(){
-  const k=selKey();const e=db.entries[k];const min=e?e.min:0;
-  const h=Math.floor(min/60),m=min%60;
-  document.getElementById('todayNum').textContent = min>=60 ? h : min;
-  document.getElementById('todayUnit').textContent = min>=60 ? ('時間'+(m?m+'分':'')) : '分';
-  document.getElementById('memo').value = e?e.memo:'';
-  const wd=['日','月','火','水','木','金','土'][selDate.getDay()];
-  document.getElementById('selLabel').textContent=(k===todayKey()?'今日 ':'')+(selDate.getMonth()+1)+'/'+selDate.getDate()+'('+wd+')';
-  document.getElementById('nextBtn').disabled=(k===todayKey());
-}
-function clearUndo(){lastAdd=null;document.getElementById('undoBtn').style.display='none';}
-function stepDay(dir){
-  const nd=new Date(selDate);nd.setDate(nd.getDate()+dir);nd.setHours(0,0,0,0);
+function clearUndo(m){lastAdd[m]=null;document.getElementById(m+'_undoBtn').style.display='none';}
+function stepDay(m,dir){
+  const nd=new Date(selDate[m]);nd.setDate(nd.getDate()+dir);nd.setHours(0,0,0,0);
   const t=new Date();t.setHours(0,0,0,0);
   if(nd>t)return;
-  selDate=nd;clearUndo();syncCal();renderEntry();renderCal();
+  selDate[m]=nd;clearUndo(m);
+  if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();}
+  else{renderChart();}
+  renderEntry(m);
 }
-function selectDate(k){
+function selectDate(m,k){
   const p=k.split('-').map(Number);const nd=new Date(p[0],p[1]-1,p[2]);nd.setHours(0,0,0,0);
   const t=new Date();t.setHours(0,0,0,0);if(nd>t)return;
-  selDate=nd;clearUndo();syncCal();renderEntry();renderCal();
+  selDate[m]=nd;clearUndo(m);
+  if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();}
+  else{renderChart();}
+  renderEntry(m);
 }
+
+/* ---------- 勉強カレンダー ---------- */
 function renderCal(){
-  const el=document.getElementById('cal');
+  const el=document.getElementById('study_cal');
   const y=calRef.getFullYear(), mo=calRef.getMonth();
-  document.getElementById('calLabel').textContent=y+'年'+(mo+1)+'月';
+  document.getElementById('study_calLabel').textContent=y+'年'+(mo+1)+'月';
   const lead=(new Date(y,mo,1).getDay()+6)%7;
   const dim=new Date(y,mo+1,0).getDate();
   const today=new Date();today.setHours(0,0,0,0);
-  const sk=selKey();
+  const sk=selKey('study');
   let html='';
   for(let i=0;i<lead;i++)html+='<div class="cday blank"></div>';
   for(let dd=1;dd<=dim;dd++){
     const d=new Date(y,mo,dd);const k=ymd(d);
     const future=d>today;
-    const min=db.entries[k]?db.entries[k].min:0;
-    let lv=''; if(min>=120)lv='l3'; else if(min>=45)lv='l2'; else if(min>0)lv='l1';
+    const e=db.study.entries[k];const v=e?e.min:0;
+    let lv=''; if(v>=120)lv='l3'; else if(v>=45)lv='l2'; else if(v>0)lv='l1';
     const cls=['cday']; if(lv)cls.push(lv); if(future)cls.push('fut');
     if(k===todayKey())cls.push('today'); if(k===sk&&!future)cls.push('sel');
-    const oc=future?'':(' onclick="selectDate(\''+k+'\')"');
+    const oc=future?'':(' onclick="selectDate(\'study\',\''+k+'\')"');
     html+='<div class="'+cls.join(' ')+'"'+oc+'><span>'+dd+'</span></div>';
   }
   el.innerHTML=html;
-  document.getElementById('calNext').disabled=(y===today.getFullYear()&&mo>=today.getMonth());
+  document.getElementById('study_calNext').disabled=(y===today.getFullYear()&&mo>=today.getMonth());
 }
-function calStep(dir){
+function calStep(m,dir){
   const nx=new Date(calRef.getFullYear(),calRef.getMonth()+dir,1);
   const today=new Date();today.setHours(0,0,0,0);
   if(nx.getFullYear()>today.getFullYear()||(nx.getFullYear()===today.getFullYear()&&nx.getMonth()>today.getMonth()))return;
   calRef=nx;renderCal();
 }
+
 function renderSummary(){
-  let total=0;for(const k in db.entries)total+=db.entries[k].min;
+  let total=0;for(const k in db.study.entries)total+=db.study.entries[k].min;
   const base=mondayOf(new Date());const now=new Date();
   let week=0;
   for(let dd=0;dd<7;dd++){const d=new Date(base);d.setDate(d.getDate()+dd);
-    if(d>now)break;const e=db.entries[ymd(d)];if(e)week+=e.min;}
+    if(d>now)break;const e=db.study.entries[ymd(d)];if(e)week+=e.min;}
   let streak=0;for(let i=0;i<400;i++){const d=new Date();d.setDate(d.getDate()-i);
-    const e=db.entries[ymd(d)];
-    if(e&&e.min>0)streak++; else{if(i===0)continue; break;}
-  }
-  document.getElementById('sTotal').textContent=fmtHM(total);
-  document.getElementById('sWeek').textContent=fmtHM(week);
-  document.getElementById('sStreak').textContent=streak+'日';
+    const e=db.study.entries[ymd(d)];
+    if(e&&e.min>0)streak++; else{if(i===0)continue; break;}}
+  document.getElementById('study_sTotal').textContent=fmtHM(total);
+  document.getElementById('study_sWeek').textContent=fmtHM(week);
+  document.getElementById('study_sStreak').textContent=streak+'日';
+}
+function addBook(){
+  const t=document.getElementById('bTitle').value.trim();
+  if(!t){toast('タイトルを入力してね');return;}
+  db.study.books.push({id:Date.now(),title:t});
+  document.getElementById('bTitle').value='';
+  persist();renderBooks();pushMetaKey('books');toast('追加しました');
+}
+function moveBook(i,dir){
+  const j=i+dir;if(j<0||j>=db.study.books.length)return;
+  [db.study.books[i],db.study.books[j]]=[db.study.books[j],db.study.books[i]];
+  persist();renderBooks();pushMetaKey('books');
+}
+function finishBook(i){
+  const b=db.study.books.splice(i,1)[0];
+  db.study.history.unshift({title:b.title,done:todayKey()});
+  persist();renderBooks();renderHistory();pushMetaKey('books');pushMetaKey('history');toast('読了！繰り上げました 🎉');
+}
+function delHistory(i){db.study.history.splice(i,1);persist();renderHistory();pushMetaKey('history');}
+function toggleFold(kind){
+  document.getElementById(kind+'Head').classList.toggle('open');
+  document.getElementById(kind+'Body').classList.toggle('open');
 }
 function renderBooks(){
   const el=document.getElementById('bookList');
-  if(!db.books.length){el.innerHTML='<div class="empty">読んでいる本を追加してみよう</div>';return;}
-  el.innerHTML=db.books.map((b,i)=>{
+  if(!db.study.books.length){el.innerHTML='<div class="empty">読んでいる本を追加してみよう</div>';return;}
+  el.innerHTML=db.study.books.map((b,i)=>{
     const rk=i===0?'r1':i===1?'r2':i===2?'r3':'rx';
     return `<div class="book">
       <div class="rank ${rk}">${i+1}</div>
       <div class="info"><div class="t">${esc(b.title)}</div></div>
       <div class="ops">
         <button class="icnbtn" onclick="moveBook(${i},-1)" ${i===0?'disabled style=opacity:.3':''}>↑</button>
-        <button class="icnbtn" onclick="moveBook(${i},1)" ${i===db.books.length-1?'disabled style=opacity:.3':''}>↓</button>
+        <button class="icnbtn" onclick="moveBook(${i},1)" ${i===db.study.books.length-1?'disabled style=opacity:.3':''}>↓</button>
         <button class="done" onclick="finishBook(${i})">読了</button>
       </div></div>`;
   }).join('');
 }
 function renderHistory(){
   const body=document.getElementById('histBody');
-  document.getElementById('histCount').textContent=db.history.length?('('+db.history.length+')'):'';
-  if(!db.history.length){body.innerHTML='<div class="empty">まだありません</div>';return;}
-  body.innerHTML=db.history.map((h,i)=>`<div class="hist">
+  document.getElementById('histCount').textContent=db.study.history.length?('('+db.study.history.length+')'):'';
+  if(!db.study.history.length){body.innerHTML='<div class="empty">まだありません</div>';return;}
+  body.innerHTML=db.study.history.map((h,i)=>`<div class="hist">
     <span>${esc(h.title)}</span>
     <span style="display:flex;gap:10px;align-items:center">
       <span class="hd">${h.done}</span>
@@ -380,20 +587,228 @@ function renderHistory(){
 }
 function renderMemoList(){
   const body=document.getElementById('memoBody');
-  const items=Object.entries(db.entries).filter(([k,v])=>v.memo&&v.memo.trim())
+  const items=Object.entries(db.study.entries).filter(([k,v])=>v.memo&&v.memo.trim())
     .sort((a,b)=>b[0].localeCompare(a[0])).slice(0,20);
   if(!items.length){body.innerHTML='<div class="empty">メモはまだありません</div>';return;}
   body.innerHTML=items.map(([k,v])=>`<div class="memoitem">
     <div class="md">${k.slice(5).replace('-','/')}・${fmtHM(v.min)}</div>
     <div class="mt">${esc(v.memo)}</div></div>`).join('');
 }
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-/* ---------- 起動 ---------- */
+/* ---------- お見合い：カウンター ---------- */
+function kpi(field,delta){
+  const k=selKey('omiai');const e=ensureDay('omiai',k);
+  e[field]=Math.max(0,(e[field]||0)+delta);
+  persist();renderEntry('omiai');renderChart();pushOmiai(k);
+}
+function editKpi(field){
+  const k=selKey('omiai');const e=ensureDay('omiai',k);
+  const label=field==='steps'?'足あと':'受け取ったいいね';
+  const cur=e[field]||0;
+  const v=prompt(label+'の数を入力（'+ (selDate.omiai.getMonth()+1)+'/'+selDate.omiai.getDate() +'）', cur);
+  if(v===null)return;
+  const n=parseInt(v,10);
+  if(isNaN(n)||n<0){toast('数字を入れてね');return;}
+  e[field]=n;persist();renderEntry('omiai');renderChart();pushOmiai(k);
+}
+
+/* ---------- お見合い：足あと推移（折れ線・直近30日） ---------- */
+let stepChart=null;
+function renderChart(){
+  const cv=document.getElementById('omiai_chart');if(!cv||!window.Chart)return;
+  const labels=[],data=[];const t=new Date();
+  for(let i=29;i>=0;i--){const d=new Date(t);d.setDate(t.getDate()-i);
+    labels.push((d.getMonth()+1)+'/'+d.getDate());
+    const e=db.omiai.entries[ymd(d)];
+    data.push(e&&e.steps!=null?e.steps:null);}
+  const cs=getComputedStyle(document.documentElement);
+  const col=(cs.getPropertyValue('--line-col')||'#D698A6').trim();
+  if(stepChart)stepChart.destroy();
+  stepChart=new Chart(cv,{type:'line',
+    data:{labels,datasets:[{data,borderColor:col,backgroundColor:col,borderWidth:2.5,
+      pointRadius:3,pointHoverRadius:6,pointHitRadius:24,tension:.15,fill:false,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{displayColors:false,
+        callbacks:{title:i=>(i&&i.length)?i[0].label:'',label:i=>i.raw+'件'}}},
+      scales:{y:{beginAtZero:true,grid:{color:'#ececef',borderDash:[4,4]},
+          ticks:{color:'#b5b5ba',font:{size:12},precision:0}},
+        x:{grid:{display:false},ticks:{color:'#b5b5ba',font:{size:12},maxTicksLimit:6,autoSkip:true}}}}});
+  let l=0;
+  for(const k in db.omiai.entries){l+=db.omiai.entries[k].likes||0;}
+  document.getElementById('omiai_tLikes').textContent=l;
+}
+
+/* ---------- 課金額 ---------- */
+function addPay(){
+  const el=document.getElementById('pay_input');
+  const n=parseInt(el.value,10);
+  if(isNaN(n)||n<=0){toast('金額を入力してね');return;}
+  const p={id:Date.now(),amount:n,date:todayKey()};
+  db.omiai.payments.unshift(p);
+  el.value='';persist();renderPay();pushPay(p);toast(yen(n)+' を追加しました');
+}
+function editPay(i){
+  const p=db.omiai.payments[i];
+  const v=prompt('金額を修正（円）',p.amount);
+  if(v===null)return;
+  const n=parseInt(v,10);
+  if(isNaN(n)||n<0){toast('数字を入れてね');return;}
+  p.amount=n;persist();renderPay();pushPay(p);
+}
+function delPay(i){const p=db.omiai.payments.splice(i,1)[0];persist();renderPay();if(p)delPayRemote(p.id);}
+function renderPay(){
+  const total=db.omiai.payments.reduce((a,p)=>a+p.amount,0);
+  document.getElementById('pay_total').textContent=yen(total);
+  document.getElementById('payCount').textContent=db.omiai.payments.length?('('+db.omiai.payments.length+')'):'';
+  const body=document.getElementById('payBody');
+  if(!db.omiai.payments.length){body.innerHTML='<div class="empty">まだありません</div>';return;}
+  body.innerHTML=db.omiai.payments.map((p,i)=>`<div class="payitem">
+    <span class="pl">${p.date.slice(5).replace('-','/')}</span>
+    <span class="pr">
+      <span class="pv" onclick="editPay(${i})" style="cursor:pointer">${yen(p.amount)}</span>
+      <button class="icnbtn" onclick="delPay(${i})" style="width:26px;height:26px;font-size:13px">×</button>
+    </span></div>`).join('');
+}
+
+/* ---------- 軸 ---------- */
+const AXIS_LBL={must:'譲れない条件',nice:'あると嬉しい',check:'確認しておきたい点'};
+function toggleAxis(sec,i){db.axis[sec][i].on=!db.axis[sec][i].on;persist();renderAxisChecks();pushAxis();}
+function editAxis(sec,i){
+  const it=db.axis[sec][i];
+  const t=prompt(AXIS_LBL[sec]+'（項目）',it.t);
+  if(t===null)return;
+  if(!t.trim()){toast('内容を入れてね');return;}
+  const sub=prompt('補足（不要なら空欄でOK）',it.s||'');
+  it.t=t.trim(); it.s=(sub===null?it.s:sub.trim());
+  persist();renderAxisChecks();pushAxis();
+}
+function addAxis(sec){
+  const t=prompt(AXIS_LBL[sec]+'（項目）','');
+  if(t===null||!t.trim())return;
+  const sub=prompt('補足（不要なら空欄でOK）','');
+  db.axis[sec].push({t:t.trim(),s:sub?sub.trim():'',on:false});
+  persist();renderAxisChecks();pushAxis();
+}
+function delAxis(sec,i){
+  if(!confirm('「'+db.axis[sec][i].t+'」を削除しますか？'))return;
+  db.axis[sec].splice(i,1);persist();renderAxisChecks();pushAxis();
+}
+let axisT;
+function saveAxisText(field,val){db.axis[field]=val;persist();clearTimeout(axisT);axisT=setTimeout(pushAxis,800);}
+function axisRows(sec){
+  const list=db.axis[sec]||[];
+  if(!list.length)return '<div class="empty">「＋ 項目を追加」から書けます</div>';
+  return list.map((it,i)=>`
+    <div class="arow">
+      <div class="abox ${it.on?'on':''}" onclick="toggleAxis('${sec}',${i})">${it.on?'✓':''}</div>
+      <div class="atxt" onclick="editAxis('${sec}',${i})">
+        <div class="at ${it.on?'':'off'}">${esc(it.t)}</div>
+        ${it.s?`<div class="as">${esc(it.s)}</div>`:''}
+      </div>
+      <button class="adel" onclick="delAxis('${sec}',${i})">×</button>
+    </div>`).join('');
+}
+function renderAxisChecks(){
+  document.getElementById('axis_must').innerHTML=axisRows('must');
+  document.getElementById('axis_nice').innerHTML=axisRows('nice');
+  document.getElementById('axis_check').innerHTML=axisRows('check');
+}
+
+function switchMode(m){
+  mode=m;
+  document.querySelectorAll('.panel').forEach(p=>p.style.display='none');
+  document.getElementById('panel-'+m).style.display='block';
+  const root=document.documentElement;
+  root.classList.remove('mode-omiai','mode-axis');
+  if(m!=='study')root.classList.add('mode-'+m);
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  document.getElementById('pageTitle').textContent = m==='study'?'勉強記録':m==='omiai'?'マチアプ記録':'探す軸';
+  const tc={study:'#F1FAFD',omiai:'#FBE2E2',axis:'#FDF2B4'}[m];
+  const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.setAttribute('content',tc);
+  if(m==='omiai')renderChart(); // 非表示中はcanvasの幅が0なので表示後に描画
+}
+
+
+/* ---------- スプレッドシート同期（GAS Webアプリ） ---------- */
+// ↓ 減酒アプリで使っている GAS のデプロイURL（/exec）をそのまま貼る
+const API='';
+const canSync=()=>!!API;
+function apiPost(payload){
+  if(!canSync())return Promise.resolve();
+  // Content-Typeを付けない＝プリフライトなしの単純リクエスト
+  return fetch(API,{method:'POST',body:JSON.stringify(payload)}).catch(e=>console.warn('sync失敗',e));
+}
+function pushOmiai(date){
+  const e=db.omiai.entries[date]||{};
+  apiPost({action:'omiaiSave',date,steps:e.steps||0,likes:e.likes||0,memo:e.memo||''});
+}
+function pushStudy(date){
+  const e=db.study.entries[date]||{};
+  apiPost({action:'studySave',date,min:e.min||0,memo:e.memo||''});
+}
+function pushPay(p){ apiPost({action:'payPut',id:String(p.id),date:p.date,amount:p.amount}); }
+function delPayRemote(id){ apiPost({action:'payDel',id:String(id)}); }
+function pushMetaKey(key){ apiPost({action:'metaPut',key,value:db.study[key]}); }
+function pushAxis(){ apiPost({action:'metaPut',key:'axis',value:db.axis}); }
+
+async function pullRemote(){
+  if(!canSync())return;
+  try{
+    const res=await fetch(API+'?app=habit');
+    const d=await res.json();
+    if(!d)return;
+    for(const k in (d.omiai||{})){
+      const r=d.omiai[k];
+      db.omiai.entries[k]=Object.assign({min:0},db.omiai.entries[k]||{},{steps:r.steps,likes:r.likes,memo:r.memo});
+    }
+    for(const k in (d.study||{})){
+      const r=d.study[k];
+      db.study.entries[k]=Object.assign({},db.study.entries[k]||{},{min:r.min,memo:r.memo});
+    }
+    if(Array.isArray(d.payments)&&d.payments.length)db.omiai.payments=d.payments;
+    if(d.meta){
+      if(Array.isArray(d.meta.books))db.study.books=d.meta.books;
+      if(Array.isArray(d.meta.history))db.study.history=d.meta.history;
+      if(d.meta.axis&&d.meta.axis.v===2)db.axis=d.meta.axis;
+    }
+    persist();
+    renderEntry('study');renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();
+    renderEntry('omiai');renderPay();renderAxisChecks();
+    document.getElementById('axis_image').value=db.axis.image||'';
+    if(mode==='omiai')renderChart();
+  }catch(e){console.warn('読み込み失敗',e);}
+}
+
+/* ---------- 初期データ（8/16〜8/20の実績を一度だけ投入） ---------- */
+const SEED_FLAG='habit_seed_omiai_202608';
+function seedOmiai(){
+  try{ if(localStorage.getItem(SEED_FLAG))return; }catch(e){ return; }
+  const rows={
+    '2026-08-16':{steps:59,likes:50,memo:'開始日。8/16〜8/20の受信いいね合計50をここにまとめて記録'},
+    '2026-08-17':{steps:65,likes:0,memo:'ハイライト 21〜24時'},
+    '2026-08-18':{steps:23,likes:0,memo:''},
+    '2026-08-19':{steps:45,likes:0,memo:'ハイライト 21〜24時'},
+    '2026-08-20':{steps:18,likes:0,memo:''}
+  };
+  for(const k in rows){
+    if(db.omiai.entries[k])continue;
+    db.omiai.entries[k]={min:0,steps:rows[k].steps,likes:rows[k].likes,memo:rows[k].memo};
+  }
+  try{localStorage.setItem(SEED_FLAG,'1');}catch(e){}
+  persist();
+  for(const k in rows)pushOmiai(k);
+}
+
 function boot(){
-  const d=new Date();const w=['日','月','火','水','木','金','土'][d.getDay()];
-  document.getElementById('todayDate').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日('+w+')';
-  load();renderEntry();renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();
+  load();
+  seedOmiai();
+  renderEntry('study');renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();
+  renderEntry('omiai');renderPay();
+  document.getElementById('axis_image').value=db.axis.image;
+  renderAxisChecks();
+  switchMode('study');
+  pullRemote();
 }
 boot();
 </script>
