@@ -322,6 +322,7 @@
         <div class="foldbody" id="payBody"></div>
       </div>
     </div>
+    <button class="addrow" id="syncBtn" onclick="pushAll()">シートへ全件送信</button>
   </div>
 
   <!-- ============ 軸 ============ -->
@@ -428,7 +429,7 @@ function ensureDay(m,k){
 function add(m,delta){
   const k=selKey(m);const e=ensureDay(m,k);
   e.min=Math.max(0,e.min+delta);
-  lastAdd[m]={date:k,delta};document.getElementById(m+'_undoBtn').style.display=delta>0?'inline':'none';
+  lastAdd[m]={date:k,delta};const ub=document.getElementById(m+'_undoBtn');if(ub)ub.style.display=delta>0?'inline':'none';
   persist();renderEntry(m);
   if(m==='study'){renderCal();renderSummary();pushStudy(k);} else {renderChart();pushOmiai(k);}
   const tag=(k===todayKey())?'今日':k.slice(5).replace('-','/');
@@ -445,7 +446,7 @@ function addManual(m){
 function undo(m){
   if(!lastAdd[m])return;
   const e=db[m].entries[lastAdd[m].date];if(e){e.min=Math.max(0,e.min-lastAdd[m].delta);}
-  document.getElementById(m+'_undoBtn').style.display='none';
+  const ub2=document.getElementById(m+'_undoBtn');if(ub2)ub2.style.display='none';
   const d=lastAdd[m].delta,lastKey=lastAdd[m].date;lastAdd[m]=null;
   persist();renderEntry(m);
   if(m==='study'){renderCal();renderSummary();pushStudy(lastKey);} else {renderChart();pushOmiai(lastKey);}
@@ -474,23 +475,21 @@ function renderEntry(m){
     document.getElementById('omiai_likesVal').textContent=v.likes||0;
   }
 }
-function clearUndo(m){lastAdd[m]=null;document.getElementById(m+'_undoBtn').style.display='none';}
+function clearUndo(m){lastAdd[m]=null;const b=document.getElementById(m+'_undoBtn');if(b)b.style.display='none';}
 function stepDay(m,dir){
   const nd=new Date(selDate[m]);nd.setDate(nd.getDate()+dir);nd.setHours(0,0,0,0);
   const t=new Date();t.setHours(0,0,0,0);
   if(nd>t)return;
   selDate[m]=nd;clearUndo(m);
-  if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();}
-  else{renderChart();}
   renderEntry(m);
+  try{ if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();} else {renderChart();} }catch(e){console.warn(e);}
 }
 function selectDate(m,k){
   const p=k.split('-').map(Number);const nd=new Date(p[0],p[1]-1,p[2]);nd.setHours(0,0,0,0);
   const t=new Date();t.setHours(0,0,0,0);if(nd>t)return;
   selDate[m]=nd;clearUndo(m);
-  if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();}
-  else{renderChart();}
   renderEntry(m);
+  try{ if(m==='study'){calRef=new Date(nd.getFullYear(),nd.getMonth(),1);renderCal();} else {renderChart();} }catch(e){console.warn(e);}
 }
 
 /* ---------- 勉強カレンダー ---------- */
@@ -741,16 +740,30 @@ function apiPost(payload){
 }
 function pushOmiai(date){
   const e=db.omiai.entries[date]||{};
-  apiPost({action:'omiaiSave',date,steps:e.steps||0,likes:e.likes||0,memo:e.memo||''});
+  return apiPost({action:'omiaiSave',date,steps:e.steps||0,likes:e.likes||0,memo:e.memo||''});
 }
 function pushStudy(date){
   const e=db.study.entries[date]||{};
-  apiPost({action:'studySave',date,min:e.min||0,memo:e.memo||''});
+  return apiPost({action:'studySave',date,min:e.min||0,memo:e.memo||''});
 }
-function pushPay(p){ apiPost({action:'payPut',id:String(p.id),date:p.date,amount:p.amount}); }
-function delPayRemote(id){ apiPost({action:'payDel',id:String(id)}); }
-function pushMetaKey(key){ apiPost({action:'metaPut',key,value:db.study[key]}); }
-function pushAxis(){ apiPost({action:'metaPut',key:'axis',value:db.axis}); }
+function pushPay(p){ return apiPost({action:'payPut',id:String(p.id),date:p.date,amount:p.amount}); }
+function delPayRemote(id){ return apiPost({action:'payDel',id:String(id)}); }
+function pushMetaKey(key){ return apiPost({action:'metaPut',key,value:db.study[key]}); }
+function pushAxis(){ return apiPost({action:'metaPut',key:'axis',value:db.axis}); }
+
+async function pushAll(){
+  if(!canSync()){toast('APIのURLが未設定です');return;}
+  const btn=document.getElementById('syncBtn');
+  if(btn){btn.disabled=true;btn.textContent='送信中…';}
+  try{
+    for(const k in db.omiai.entries){ await pushOmiai(k); }
+    for(const k in db.study.entries){ await pushStudy(k); }
+    for(const p of db.omiai.payments){ await pushPay(p); }
+    await pushMetaKey('books'); await pushMetaKey('history'); await pushAxis();
+    toast('シートへ送信しました');
+  }catch(e){ toast('送信に失敗しました'); }
+  if(btn){btn.disabled=false;btn.textContent='シートへ全件送信';}
+}
 
 async function pullRemote(){
   if(!canSync())return;
