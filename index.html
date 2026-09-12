@@ -352,6 +352,8 @@
       <div class="lbl">④ 一緒にいたいイメージ</div>
       <textarea id="axis_image" rows="3" placeholder="どんな関係・暮らしを一緒に作りたいか、自分の言葉で" oninput="saveAxisText('image',this.value)"></textarea>
     </div>
+    <button class="addrow" id="axisSaveBtn" onclick="saveAxisNow()">シートへ保存</button>
+    <div class="secnote" id="axisSyncNote" style="text-align:center;margin-top:8px"></div>
   </div>
 
   <div id="toast"></div>
@@ -389,6 +391,13 @@ let db={
     v:2
   }
 };
+// 出荷時の「軸」の雛形（消えた時の復帰用に保持）
+const AXIS_DEFAULT=JSON.parse(JSON.stringify(db.axis));
+function axisIsEmpty(a){
+  if(!a)return true;
+  const n=(a.must||[]).length+(a.nice||[]).length+(a.check||[]).length;
+  return n===0;
+}
 function load(){
   try{
     let raw=localStorage.getItem(KEY)||localStorage.getItem('habit_tracker_v3')||localStorage.getItem('habit_tracker_v2')||localStorage.getItem('habit_tracker_v1');
@@ -401,6 +410,12 @@ function load(){
     if(p.study)db.study=Object.assign(db.study,p.study);
     if(p.omiai)db.omiai=Object.assign(db.omiai,p.omiai);
     if(p.axis&&p.axis.v===2)db.axis=Object.assign(db.axis,p.axis); // 旧バージョンの軸は新しい雛形で置き換え
+    // 3つとも空＝データが失われた状態。雛形に戻す（本文④の記入は残す）
+    if(axisIsEmpty(db.axis)){
+      const keepImage=db.axis.image;
+      db.axis=JSON.parse(JSON.stringify(AXIS_DEFAULT));
+      if(keepImage)db.axis.image=keepImage;
+    }
     if(!db.omiai.payments)db.omiai.payments=[];
     for(const k in db.omiai.entries){const e=db.omiai.entries[k];
       if(e.likes===undefined&&e.recv!==undefined)e.likes=e.recv;
@@ -765,6 +780,16 @@ function pushPay(p){ return apiPost({action:'payPut',id:String(p.id),date:p.date
 function delPayRemote(id){ return apiPost({action:'payDel',id:String(id)}); }
 function pushMetaKey(key){ return apiPost({action:'metaPut',key,value:db.study[key]}); }
 function pushAxis(){ return apiPost({action:'metaPut',key:'axis',value:db.axis}); }
+async function saveAxisNow(){
+  const btn=document.getElementById('axisSaveBtn');
+  if(btn){btn.disabled=true;btn.textContent='保存中…';}
+  await pushAxis();
+  const n=document.getElementById('axisSyncNote');
+  const t=new Date();
+  if(n)n.textContent='最終保存 '+(t.getMonth()+1)+'/'+t.getDate()+' '+pad(t.getHours())+':'+pad(t.getMinutes());
+  if(btn){btn.disabled=false;btn.textContent='シートへ保存';}
+  toast('シートへ保存しました');
+}
 
 async function pushAll(){
   if(!canSync()){toast('APIのURLが未設定です');return;}
@@ -798,7 +823,12 @@ async function pullRemote(){
     if(d.meta){
       if(Array.isArray(d.meta.books))db.study.books=d.meta.books;
       if(Array.isArray(d.meta.history))db.study.history=d.meta.history;
-      if(d.meta.axis&&d.meta.axis.v===2)db.axis=d.meta.axis;
+      // シート側に中身のある軸がある時だけ採用。無ければローカルを正としてシートへ保存
+      if(d.meta.axis&&d.meta.axis.v===2&&!axisIsEmpty(d.meta.axis)){
+        db.axis=d.meta.axis;
+      }else if(!axisIsEmpty(db.axis)){
+        pushAxis();
+      }
     }
     persist();
     renderEntry('study');renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();
@@ -828,14 +858,15 @@ function seedOmiai(){
   for(const k in rows)pushOmiai(k);
 }
 
+function safe(fn,label){ try{ fn(); }catch(e){ console.warn('描画エラー:'+label,e); } }
 function boot(){
   load();
-  seedOmiai();
-  renderEntry('study');renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();
-  renderEntry('omiai');renderPay();
-  document.getElementById('axis_image').value=db.axis.image;
-  renderAxisChecks();
-  switchMode('study');
+  safe(seedOmiai,'seed');
+  safe(()=>{renderEntry('study');renderCal();renderSummary();renderBooks();renderHistory();renderMemoList();},'study');
+  safe(()=>{renderEntry('omiai');renderPay();},'omiai');
+  safe(()=>{const el=document.getElementById('axis_image');if(el)el.value=db.axis.image||'';},'axisText');
+  safe(renderAxisChecks,'axis');
+  safe(()=>switchMode('study'),'mode');
   pullRemote();
 }
 boot();
